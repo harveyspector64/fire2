@@ -3,162 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fire Simulation</title>
+    <title>Forest Fire Simulator</title>
     <style>
         canvas {
             border: 1px solid black;
-            width: 100%;
-            height: auto;
-        }
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: block;
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
-    <canvas id="fireCanvas"></canvas>
+    <canvas id="forestCanvas" width="600" height="600"></canvas>
     <script>
-        // Set up display
-        const canvas = document.getElementById('fireCanvas');
+        const canvas = document.getElementById('forestCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Set the canvas to fill the screen size dynamically
-        function setCanvasSize() {
-            canvas.width = window.innerWidth * 0.9;
-            canvas.height = window.innerHeight * 0.8;
-        }
+        // Size of each tile in the grid
+        const tileSize = 10;
+        // Calculate number of rows and columns based on canvas size
+        const rows = canvas.height / tileSize;
+        const cols = canvas.width / tileSize;
+        const forest = [];
+        
+        // Directions for fire spread (N, S, E, W, NE, NW, SE, SW)
+        const directions = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
 
-        setCanvasSize();
-        window.addEventListener('resize', () => {
-            setCanvasSize();
-            initializeGrid();  // Reinitialize grid on resize to fit new size
-        });
-
-        let width = canvas.width;
-        let height = canvas.height;
-        const cellSize = 10;  // Size of each cell in the grid
-        let cols = Math.floor(width / cellSize);  // Number of columns based on canvas width
-        let rows = Math.floor(height / cellSize);  // Number of rows based on canvas height
-
-        // Colors
-        const EMPTY = 'black';  // Color for empty cells
-        const TREE = 'rgb(34, 139, 34)';  // Color for tree cells
-        const BURNING = 'rgb(255, 69, 0)';  // Color for burning cells
-
-        // Probability constants
-        const FIRE_SPREAD_PROB = 0.05;  // Reduced probability of a tree catching fire from a burning neighbor for slower spread
-
-        // Grid setup
-        let grid;
-        let running = true;
-
-        function initializeGrid() {
-            width = canvas.width;
-            height = canvas.height;
-            cols = Math.floor(width / cellSize);
-            rows = Math.floor(height / cellSize);
-            grid = Array.from({ length: rows }, () => Array(cols).fill(1));  // Fill the grid with trees initially
-        }
-
-        initializeGrid();
-
-        // Function to get neighboring cell offsets
-        function getNeighbors() {
-            return [
-                [-1, 0], [1, 0], [0, -1], [0, 1]  // Up, down, left, right
-            ];
-        }
-
-        // Function to determine if a tree should catch fire based on its neighbors
-        function shouldCatchFire(row, col) {
-            for (let [dr, dc] of getNeighbors()) {  // Iterate over all possible neighbors
-                let r = row + dr;
-                let c = col + dc;
-                // Check if the neighbor is within bounds and is burning
-                if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 2) {
-                    if (Math.random() < FIRE_SPREAD_PROB) {  // Probability of spreading fire
-                        return true;
-                    }
+        // Function to generate the forest grid with random trees
+        function generateForest() {
+            for (let y = 0; y < rows; y++) {
+                forest[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    // 70% chance of a cell being a tree, 30% chance of being empty
+                    forest[y][x] = Math.random() < 0.7 ? 'tree' : 'empty';
                 }
             }
-            return false;
         }
 
-        // Main simulation loop
-        function mainLoop() {
-            // Create a copy of the grid to store updates for the next state
-            let newGrid = grid.map(row => row.slice());
-
-            // Iterate through each cell in the grid
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    if (grid[row][col] === 1) {  // Tree cell
-                        if (shouldCatchFire(row, col)) {
-                            newGrid[row][col] = 2;  // Tree catches fire if a neighbor is burning
-                        }
-                    } else if (grid[row][col] === 2) {  // Burning cell
-                        newGrid[row][col] = 0;  // Fire burns out, leaving the cell empty
-                    }
-                }
-            }
-
-            // Update the grid with the new state
-            grid = newGrid;
-
-            // Draw the grid
-            ctx.clearRect(0, 0, width, height);  // Clear the canvas
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    let color;
-                    if (grid[row][col] === 1) {
-                        color = TREE;  // Tree cell color
-                    } else if (grid[row][col] === 2) {
-                        color = BURNING;  // Burning cell color
+        // Function to draw the forest grid on the canvas
+        function drawForest() {
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    // Set color based on the state of the cell
+                    if (forest[y][x] === 'tree') {
+                        ctx.fillStyle = 'green';
+                    } else if (forest[y][x] === 'burning') {
+                        ctx.fillStyle = 'red';
                     } else {
-                        color = EMPTY;  // Empty cell color
+                        ctx.fillStyle = 'lightgrey';
                     }
-                    ctx.fillStyle = color;
-                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);  // Draw the cell
+                    // Draw the cell as a filled rectangle
+                    ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 }
             }
-
-            requestAnimationFrame(mainLoop);  // Request the next frame
         }
 
-        // User interaction: Ignite fire by clicking on the canvas
-        canvas.addEventListener('click', (event) => {
-            const rect = canvas.getBoundingClientRect();  // Get canvas position relative to the viewport
-            const x = event.clientX - rect.left;  // Calculate x-coordinate within the canvas
-            const y = event.clientY - rect.top;  // Calculate y-coordinate within the canvas
-            const col = Math.floor(x / cellSize);  // Convert x-coordinate to column index
-            const row = Math.floor(y / cellSize);  // Convert y-coordinate to row index
-            if (grid[row][col] === 1) {  // Only ignite if there's a tree
-                grid[row][col] = 2;  // Start a fire at the clicked position
+        // Function to spread the fire in the forest
+        function spreadFire() {
+            // Create a copy of the forest to track changes without affecting the original
+            const newForest = forest.map(row => [...row]);
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    // If the cell is burning, spread fire to adjacent cells
+                    if (forest[y][x] === 'burning') {
+                        // After burning, the cell becomes empty
+                        newForest[y][x] = 'empty';
+                        // Check all 8 possible directions
+                        directions.forEach(([dy, dx]) => {
+                            const newY = y + dy;
+                            const newX = x + dx;
+                            // If the adjacent cell is within bounds and is a tree, set it on fire
+                            if (newY >= 0 && newY < rows && newX >= 0 && newX < cols && forest[newY][newX] === 'tree') {
+                                newForest[newY][newX] = 'burning';
+                            }
+                        });
+                    }
+                }
             }
+            // Update the forest with the new state
+            for (let y = 0; y < rows; y++) {
+                forest[y] = [...newForest[y]];
+            }
+            // Redraw the forest
+            drawForest();
+        }
+
+        // Function to start a fire at a specific location
+        function startFire(x, y) {
+            // Convert pixel coordinates to grid coordinates
+            const gridX = Math.floor(x / tileSize);
+            const gridY = Math.floor(y / tileSize);
+            // If the selected cell is a tree, set it on fire
+            if (forest[gridY][gridX] === 'tree') {
+                forest[gridY][gridX] = 'burning';
+                drawForest();
+            }
+        }
+
+        // Event listener for mouse clicks to start a fire
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Calculate the mouse position relative to the canvas
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            startFire(x, y);
         });
 
-        // Function to create a peaceful swaying effect on the trees
-        function swayTrees() {
-            ctx.clearRect(0, 0, width, height);  // Clear the canvas
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    if (grid[row][col] === 1) {  // Only sway the trees
-                        let offsetX = Math.sin(Date.now() / 500 + row) * 1;  // Calculate horizontal sway based on time
-                        ctx.fillStyle = TREE;
-                        ctx.fillRect((col * cellSize) + offsetX, row * cellSize, cellSize, cellSize);  // Draw the swaying tree cell
-                    }
-                }
-            }
-            requestAnimationFrame(swayTrees);  // Request the next frame for the swaying effect
+        // Event listener for touch events to start a fire (for mobile devices)
+        canvas.addEventListener('touchstart', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Calculate the touch position relative to the canvas
+            const x = e.touches[0].clientX - rect.left;
+            const y = e.touches[0].clientY - rect.top;
+            startFire(x, y);
+            e.stopPropagation();
+        });
+
+        // Initialize the forest and draw it for the first time
+        generateForest();
+        drawForest();
+        // Set an interval to spread fire every 500 milliseconds
+        function startSpreadFire() {
+            spreadFire();
+            requestAnimationFrame(startSpreadFire);
         }
-
-        // Start the swaying effect
-        swayTrees();
-
-        // Start the simulation
-        mainLoop();
+        requestAnimationFrame(startSpreadFire);
     </script>
 </body>
 </html>
