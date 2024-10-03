@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Simulation</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fireCanvas" width="800" height="600"></canvas>
+    <script>
+        // Function to get neighboring cell offsets
+        function getNeighbors() {
+            return [
+                [-1, 0], [1, 0], [0, -1], [0, 1]
+            ];
+        }
+
+        // Set up display
+        const canvas = document.getElementById('fireCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const cellSize = 10;
+        const cols = Math.floor(width / cellSize);
+        const rows = Math.floor(height / cellSize);
+
+        // Colors
+        const EMPTY = 'black';
+        const TREE = 'rgb(34, 139, 34)';
+        const BURNING = 'rgb(255, 69, 0)';
+
+        // Probability constants
+        const GROWTH_PROB = 0.01;
+        const FIRE_PROB = 0.0005;
+
+        // Grid setup
+        let grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+        let running = true;
+
+        function shouldCatchFire(row, col) {
+            for (let [dr, dc] of getNeighbors()) {
+                let r = row + dr;
+                let c = col + dc;
+                if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 2) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function mainLoop() {
+            // Create a copy of the grid to store updates for the next state
+            let newGrid = JSON.parse(JSON.stringify(grid));
+
+            // Iterate through each cell in the grid
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    if (grid[row][col] === 0) {  // Empty cell
+                        if (Math.random() < GROWTH_PROB) {
+                            newGrid[row][col] = 1;  // A tree grows with a certain probability
+                        }
+                    } else if (grid[row][col] === 1) {  // Tree cell
+                        if (Math.random() < FIRE_PROB) {
+                            newGrid[row][col] = 2;  // Tree spontaneously catches fire with a certain probability
+                        } else if (shouldCatchFire(row, col)) {
+                            newGrid[row][col] = 2;  // Tree catches fire if a neighbor is burning
+                        }
+                    } else if (grid[row][col] === 2) {  // Burning cell
+                        newGrid[row][col] = 0;  // Fire burns out, leaving the cell empty
+                    }
+                }
+            }
+
+            // Update the grid with the new state
+            grid = newGrid;
+
+            // Draw the grid
+            ctx.clearRect(0, 0, width, height);
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    let color;
+                    if (grid[row][col] === 1) {
+                        color = TREE;
+                    } else if (grid[row][col] === 2) {
+                        color = BURNING;
+                    } else {
+                        color = EMPTY;
+                    }
+                    ctx.fillStyle = color;
+                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                }
+            }
+
+            let animationId = requestAnimationFrame(mainLoop);
+            if (!running) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // Start the simulation
+        mainLoop();
+    </script>
+</body>
+</html>
