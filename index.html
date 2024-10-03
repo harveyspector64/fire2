@@ -18,6 +18,19 @@
         const canvas = document.getElementById('forestCanvas');
         const ctx = canvas.getContext('2d');
 
+        // Size of each tile in the grid
+        const tileSize = 10;
+        // Calculate number of rows and columns based on canvas size
+        let rows;
+        let cols;
+        let forest = [];
+        
+        // Directions for fire spread (N, S, E, W, NE, NW, SE, SW)
+        const directions = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
+
         // Set canvas size to fill the browser window
         function debounce(func, wait) {
             let timeout;
@@ -33,20 +46,6 @@
             initialize();
         }
         window.addEventListener('resize', debounce(resizeCanvas, 200));
-        resizeCanvas();
-
-        // Size of each tile in the grid
-        const tileSize = 10;
-        // Calculate number of rows and columns based on canvas size
-        let rows;
-        let cols;
-        let forest = [];
-        
-        // Directions for fire spread (N, S, E, W, NE, NW, SE, SW)
-        const directions = [
-            [-1, 0], [1, 0], [0, -1], [0, 1],
-            [-1, -1], [-1, 1], [1, -1], [1, 1]
-        ];
 
         // Function to generate the forest grid with random trees and different ground colors
         function generateForest() {
