@@ -19,7 +19,6 @@
 </head>
 <body>
     <canvas id="fireCanvas"></canvas>
-    <button id="igniteButton">Start Fire</button>
     <script>
         // Set up display
         const canvas = document.getElementById('fireCanvas');
@@ -29,7 +28,6 @@
         function setCanvasSize() {
             canvas.width = window.innerWidth * 0.9;
             canvas.height = window.innerHeight * 0.8;
-            console.log(`Canvas size set to: ${canvas.width}x${canvas.height}`);
         }
 
         setCanvasSize();
@@ -50,8 +48,7 @@
         const BURNING = 'rgb(255, 69, 0)';  // Color for burning cells
 
         // Probability constants
-        const GROWTH_PROB = 0.01;  // Probability of an empty cell growing a tree
-        const FIRE_PROB = 0.0005;  // Probability of a tree spontaneously catching fire
+        const FIRE_SPREAD_PROB = 0.05;  // Reduced probability of a tree catching fire from a burning neighbor for slower spread
 
         // Grid setup
         let grid;
@@ -81,8 +78,9 @@
                 let c = col + dc;
                 // Check if the neighbor is within bounds and is burning
                 if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] === 2) {
-                    console.log(`Tree at (${row}, ${col}) catches fire from neighbor at (${r}, ${c})`);
-                    return true;
+                    if (Math.random() < FIRE_SPREAD_PROB) {  // Probability of spreading fire
+                        return true;
+                    }
                 }
             }
             return false;
@@ -96,21 +94,12 @@
             // Iterate through each cell in the grid
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
-                    if (grid[row][col] === 0) {  // Empty cell
-                        if (Math.random() < GROWTH_PROB) {
-                            newGrid[row][col] = 1;  // A tree grows with a certain probability
-                            console.log(`Tree grew at (${row}, ${col})`);
-                        }
-                    } else if (grid[row][col] === 1) {  // Tree cell
-                        if (Math.random() < FIRE_PROB) {
-                            newGrid[row][col] = 2;  // Tree spontaneously catches fire with a certain probability
-                            console.log(`Tree spontaneously caught fire at (${row}, ${col})`);
-                        } else if (shouldCatchFire(row, col)) {
+                    if (grid[row][col] === 1) {  // Tree cell
+                        if (shouldCatchFire(row, col)) {
                             newGrid[row][col] = 2;  // Tree catches fire if a neighbor is burning
                         }
                     } else if (grid[row][col] === 2) {  // Burning cell
                         newGrid[row][col] = 0;  // Fire burns out, leaving the cell empty
-                        console.log(`Fire burned out at (${row}, ${col})`);
                     }
                 }
             }
@@ -135,10 +124,7 @@
                 }
             }
 
-            let animationId = requestAnimationFrame(mainLoop);  // Request the next frame
-            if (!running) {
-                cancelAnimationFrame(animationId);  // Stop the animation if not running
-            }
+            requestAnimationFrame(mainLoop);  // Request the next frame
         }
 
         // User interaction: Ignite fire by clicking on the canvas
@@ -150,19 +136,26 @@
             const row = Math.floor(y / cellSize);  // Convert y-coordinate to row index
             if (grid[row][col] === 1) {  // Only ignite if there's a tree
                 grid[row][col] = 2;  // Start a fire at the clicked position
-                console.log(`Fire started at (${row}, ${col}) by user click`);
             }
         });
 
-        // Ignite a random fire when the button is clicked
-        document.getElementById('igniteButton').addEventListener('click', () => {
-            const randomRow = Math.floor(Math.random() * rows);  // Get a random row index
-            const randomCol = Math.floor(Math.random() * cols);  // Get a random column index
-            if (grid[randomRow][randomCol] === 1) {  // Only ignite if there's a tree
-                grid[randomRow][randomCol] = 2;  // Start a fire at a random tree position
-                console.log(`Fire started at random position (${randomRow}, ${randomCol}) by button click`);
+        // Function to create a peaceful swaying effect on the trees
+        function swayTrees() {
+            ctx.clearRect(0, 0, width, height);  // Clear the canvas
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    if (grid[row][col] === 1) {  // Only sway the trees
+                        let offsetX = Math.sin(Date.now() / 500 + row) * 1;  // Calculate horizontal sway based on time
+                        ctx.fillStyle = TREE;
+                        ctx.fillRect((col * cellSize) + offsetX, row * cellSize, cellSize, cellSize);  // Draw the swaying tree cell
+                    }
+                }
             }
-        });
+            requestAnimationFrame(swayTrees);  // Request the next frame for the swaying effect
+        }
+
+        // Start the swaying effect
+        swayTrees();
 
         // Start the simulation
         mainLoop();
